@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>小伊 & 小綸的存錢筒</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background: #fff;
+    }
+    h1, h2 { text-align: center; color: #d6336c; }
+    label, input, select, button {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 1.1em;
+    }
+    button {
+      background-color: #d6336c;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+    }
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .success { color: green; }
+    .error { color: red; }
+    .totals, .records {
+      margin-top: 30px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #f9f9f9;
+    }
+    ul { padding-left: 20px; }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      input, select, button { font-size: 1em; }
+    }
+  </style>
+</head>
+<body>
+  <h1>💑 小伊 & 小綸的存錢筒</h1>
+
+  <form id="saveForm">
+    <label>存錢人：
+      <select id="person">
+        <option value="小綸">小綸</option>
+        <option value="小伊">小伊</option>
+      </select>
+    </label>
+
+    <label>金額（元）：
+      <input type="number" id="amount" required>
+    </label>
+
+    <label>備註（可選）：
+      <input type="text" id="note">
+    </label>
+
+    <button type="submit">存入</button>
+  </form>
+
+  <p id="message"></p>
+
+  <div class="totals">
+    <h2>💰 存款總額</h2>
+    <p>小綸：<span id="totalXiaolun">0</span> 元</p>
+    <p>小伊：<span id="totalXiaoyi">0</span> 元</p>
+    <p><strong>合計：<span id="totalAll">0</span> 元</strong></p>
+  </div>
+
+  <div class="records">
+    <h2>📝 存錢紀錄</h2>
+    <ul id="recordsList"></ul>
+  </div>
+
+  <script>
+    const form = document.getElementById('saveForm');
+    const message = document.getElementById('message');
+    const recordsList = document.getElementById('recordsList');
+
+    const totals = {
+      小綸: 0,
+      小伊: 0
+    };
+
+    async function loadRecords() {
+      try {
+        const sheetURL = 'https://docs.google.com/spreadsheets/d/1eA0TX74w0Lr88YFyHklUgf3OdexH_PXK8m7C0Po1E4Q/gviz/tq?tqx=out:json';
+        const res = await fetch(sheetURL);
+        const text = await res.text();
+        const json = JSON.parse(text.substr(47).slice(0, -2));
+        const rows = json.table.rows;
+
+        recordsList.innerHTML = '';
+        totals.小綸 = 0;
+        totals.小伊 = 0;
+
+        rows.forEach(row => {
+          const [personCell, amountCell, noteCell, timeCell] = row.c;
+          const person = personCell?.v || '';
+          const amount = parseInt(amountCell?.v) || 0;
+          const note = noteCell?.v || '';
+          const time = timeCell?.f || '';
+
+          if (person === '小綸' || person === '小伊') {
+            totals[person] += amount;
+          }
+
+          const li = document.createElement('li');
+          li.textContent = `[${time}] ${person} 存了 ${amount} 元 ${note ? '｜備註：' + note : ''}`;
+          recordsList.appendChild(li);
+        });
+
+        document.getElementById('totalXiaolun').textContent = totals.小綸;
+        document.getElementById('totalXiaoyi').textContent = totals.小伊;
+        document.getElementById('totalAll').textContent = totals.小綸 + totals.小伊;
+      } catch (err) {
+        console.error('讀取紀錄失敗：', err);
+        recordsList.innerHTML = '<li>⚠️ 無法載入紀錄</li>';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const person = document.getElementById('person').value;
+      const amount = document.getElementById('amount').value;
+      const note = document.getElementById('note').value;
+
+      if (!amount || amount <= 0) {
+        message.textContent = '金額請填正確數字';
+        message.className = 'error';
+        return;
+      }
+
+      const data = {
+        person,
+        amount: parseInt(amount),
+        note
+      };
+
+      try {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbzuUa09k2R7pOYJmTWOoaCtIc03JnPrRJfsheCQtDmhP70qnKvvTGzcmFq8A6Yk2eWZeA/exec', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (res.ok) {
+          message.textContent = '✅ 存錢成功！';
+          message.className = 'success';
+          form.reset();
+          setTimeout(() => { message.textContent = ''; }, 2000);
+          await loadRecords(); // 自動重新讀取資料
+        } else {
+          message.textContent = '❌ 發送失敗';
+          message.className = 'error';
+        }
+      } catch (err) {
+        message.textContent = '⚠️ 發送過程發生錯誤';
+        message.className = 'error';
+        console.error(err);
+      }
+    });
+
+    // 初始化顯示紀錄
+    loadRecords();
+  </script>
+</body>
+</html>
