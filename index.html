@@ -155,27 +155,36 @@
       };
 
       try {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbzuUa09k2R7pOYJmTWOoaCtIc03JnPrRJfsheCQtDmhP70qnKvvTGzcmFq8A6Yk2eWZeA/exec', {
+        const res = await fetch('你的 Apps Script URL', {
           method: 'POST',
           body: JSON.stringify(data),
           headers: { 'Content-Type': 'application/json' }
-        });
+  });
 
-        if (res.ok) {
-          message.textContent = '✅ 存錢成功！';
-          message.className = 'success';
-          form.reset();
-          setTimeout(() => { message.textContent = ''; }, 2000);
-          await loadRecords(); // 自動重新讀取資料
-        } else {
-          message.textContent = '❌ 發送失敗';
-          message.className = 'error';
-        }
-      } catch (err) {
-        message.textContent = '⚠️ 發送過程發生錯誤';
-        message.className = 'error';
-        console.error(err);
-      }
+  if (res.ok) {
+    const json = await res.json(); // 解析回傳 JSON
+    if (json.result === 'success') {
+      message.textContent = '✅ 存錢成功！';
+      message.className = 'success';
+      form.reset();
+      setTimeout(() => { message.textContent = ''; }, 2000);
+      await loadRecords();
+    } else {
+      message.textContent = '❌ 後端錯誤：' + (json.message || '未知錯誤');
+      message.className = 'error';
+      console.error('後端錯誤：', json);
+    }
+  } else {
+    message.textContent = `❌ HTTP 錯誤：${res.status} ${res.statusText}`;
+    message.className = 'error';
+    console.error('HTTP 錯誤', res);
+  }
+} catch (err) {
+  message.textContent = '⚠️ 發送過程發生錯誤：' + err.message;
+  message.className = 'error';
+  console.error('Fetch 錯誤：', err);
+}
+
     });
 
     // 初始化顯示紀錄
