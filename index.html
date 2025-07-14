@@ -65,6 +65,10 @@
     <label>備註（可選）：
       <input type="text" id="note">
     </label>
+    
+    <label for="date">日期：</label>
+      <input type="date" id="date" name="date">
+
 
     <button type="submit">存入</button>
   </form>
@@ -146,7 +150,8 @@
       const data = {
         person,
         amount: parseInt(amount),
-        note
+        note,
+        date
       };
 
       try {
